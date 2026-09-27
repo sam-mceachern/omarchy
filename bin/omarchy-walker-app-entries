@@ -48,16 +48,16 @@ GLYPH_PX=26
 PANEL_W=486
 PANEL_H=300
 # Insets from the panel's inner edge, and the icon it draws top-left.
-PAD_X=18
-PAD_Y=14
+PAD_X=1
+PAD_Y=6
 ICON_BOX=72
 # Text column starts clear of the icon; TEXT_X is where every line aligns.
 TEXT_X=$((PAD_X + ICON_BOX + 16))
 # This monospace font advances about 0.46 * pointsize per character, so the
 # PANEL_W - TEXT_X - PAD_X that is left comes to ~39 columns at 20pt and ~49
 # at 16pt.
-NAME_COLS=39
-DESC_COLS=49
+NAME_COLS=20
+DESC_COLS=51
 DESC_LINES=2
 # The open button floats over the panel's bottom-right corner, level with the
 # last description line, so that line has to stop short of it. The button is
