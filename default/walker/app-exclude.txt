@@ -27,3 +27,32 @@ Image Viewer
 Kdenlive
 Kvantum Manager
 Limine-snapper-restore
+ProtonUp-QT
+Print Settings
+Ventoy
+xgpsspeed
+xgps
+Zen Browser
+Xournal++
+Wiremix
+uuctl
+Pinta
+QT Assistant
+QT D-Bus Viewer
+QT V4L2 test Utility
+QT V4L2 video capture Utility
+QT Linguist
+QT Widgets Designer
+Typora
+OBS Studio
+Google Chrome
+OpenRGB
+LibreOffice
+LibreOffice Base
+LibreOffice Math
+LibreOffice Draw
+LibreOffice Impress
+Document Viewer
+LibreOffice Calc
+OpenJDK Java 26 Console
+OpenJDK Java 26 Shell
