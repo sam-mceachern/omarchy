@@ -1,0 +1,93 @@
+/* Walker "sprite" theme -- every menu row sits on its own pixel-art plate
+ * instead of the whole list sharing one box. Drives both the application
+ * launcher and the Omarchy menu, since both are Walker.
+ *
+ * Frame  : nine-patch border-image. Corners draw 1:1 and the edges TILE
+ *          (border-image-repeat: repeat), so nothing is ever resampled and the
+ *          pixel grid stays crisp at any row height. Never use `stretch` here.
+ * Centre : tiled background-image. GTK4 parses `border-image-slice: ... fill`
+ *          without raising a CSS error but never paints the middle region, so
+ *          the plate interior has to be filled separately.
+ *
+ * The PNGs are generated per theme by omarchy-theme-set-walker-sprites into
+ * ~/.config/omarchy/current/theme/walker-sprites/. As with the @import below,
+ * the relative path assumes this file lives at the standard
+ * ~/.local/share/omarchy/default/walker/themes/<name>/ depth.
+ */
+@import "../../../../../../../.config/omarchy/current/theme/walker.css";
+
+* { all: unset; }
+
+* {
+  font-family: monospace;
+  font-size: 18px;
+  color: @text;
+}
+
+scrollbar { opacity: 0; }
+
+.normal-icons { -gtk-icon-size: 16px; }
+.large-icons  { -gtk-icon-size: 32px; }
+
+/* The plates are the UI -- no enclosing box. */
+.box-wrapper {
+  background: transparent;
+  border: none;
+  padding: 0px;
+}
+
+.search-container {
+  background: transparent;
+  padding: 0px;
+  margin-bottom: 4px;
+}
+
+.input {
+  border: 15px solid transparent;
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input.png");
+  border-image-slice: 15 15 15 15;
+  border-image-width: 15px;
+  border-image-repeat: repeat;
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input-center.png");
+  background-repeat: repeat;
+  padding: 0px 2px;
+}
+.input placeholder { opacity: 0.5; }
+.input:focus, .input:active { box-shadow: none; outline: none; }
+
+.content-container { background: transparent; }
+.scroll            { background: transparent; }
+
+/* Gap so the plates read as separate objects. */
+child { padding: 2px 0px; }
+
+.item-box {
+  border: 15px solid transparent;
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item.png");
+  border-image-slice: 15 15 15 15;
+  border-image-width: 15px;
+  border-image-repeat: repeat;
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-center.png");
+  background-repeat: repeat;
+  padding: 0px 4px;
+}
+
+child:hover .item-box {
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-hover.png");
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-hover-center.png");
+}
+
+child:selected .item-box {
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-selected.png");
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-selected-center.png");
+}
+
+child:selected             { background: transparent; }
+child:selected .item-box * { color: @selected-text; }
+
+.item-text-box { all: unset; padding: 2px 0px; }
+.item-subtext  { font-size: 0px; min-height: 0px; margin: 0px; padding: 0px; }
+.item-image    { margin-right: 12px; -gtk-icon-transform: scale(0.9); }
+.current       { font-style: italic; }
+
+.keybind-hints { background: transparent; padding: 6px; margin-top: 4px; }

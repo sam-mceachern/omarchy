@@ -1,0 +1,149 @@
+#!/bin/bash
+
+# omarchy:summary=Generate the pixel-art Walker menu sprites for the current theme
+# omarchy:hidden=true
+
+# The "sprite" Walker theme gives every menu row its own nine-patch plate instead
+# of drawing one box around the whole list. Those plates are PNGs, so unlike the
+# rest of the Walker CSS they cannot follow @define-color -- they have to be
+# redrawn whenever the palette changes. This runs from omarchy-theme-set while the
+# new theme is still staged in next-theme/, so the sprites swap in atomically with
+# everything else.
+#
+# A theme can ship hand-drawn sprites at themes/<name>/walker-sprites/*.png. Those
+# are already copied into the staged theme by omarchy-theme-set, so anything
+# present is left alone and only the missing sprites are generated -- the same
+# rule omarchy-theme-set-templates uses for theme-supplied config files. A theme
+# can override the whole set or just one plate.
+
+set -euo pipefail
+
+SCALE=3 # integer upscale; nearest-neighbour keeps the pixel grid crisp
+N=14    # native tile size
+SLICE=5 # native nine-patch slice (border-image-slice = SLICE * SCALE)
+
+NEXT_THEME_DIR="$HOME/.config/omarchy/current/next-theme"
+CURRENT_THEME_DIR="$HOME/.config/omarchy/current/theme"
+
+# Prefer the staged theme when called mid theme-set, else act on the live one.
+if [[ -n ${1:-} ]]; then
+  THEME_DIR=$1
+elif [[ -d $NEXT_THEME_DIR ]]; then
+  THEME_DIR=$NEXT_THEME_DIR
+else
+  THEME_DIR=$CURRENT_THEME_DIR
+fi
+
+COLORS_FILE="$THEME_DIR/colors.toml"
+OUT="$THEME_DIR/walker-sprites"
+
+# Themes without a colors.toml get no sprites; the theme falls back to flat CSS.
+[[ -f $COLORS_FILE ]] || exit 0
+command -v magick >/dev/null || exit 0
+
+read_color() {
+  sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"(#[0-9a-fA-F]{6})\".*/\1/p" "$COLORS_FILE" | head -1
+}
+
+hex_rgb() {
+  local h=${1#\#}
+  printf '%d %d %d' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"
+}
+
+BG=$(read_color background)
+FG=$(read_color foreground)
+AC=$(read_color accent)
+[[ -n $BG && -n $FG && -n $AC ]] || exit 0
+
+mkdir -p "$OUT"
+
+# $1 = output basename, $2 = kind (item|hover|selected|input), $3 = 1 for a
+# recessed bevel (the search field), $4 = 1 to draw accent pips in the corners
+gen_plate() {
+  [[ -f $OUT/$1.png ]] && return 0 # theme shipped this plate; leave it alone
+  awk -v N="$N" -v kind="$2" -v recessed="$3" -v studs="$4" \
+    -v bg="$(hex_rgb "$BG")" -v fg="$(hex_rgb "$FG")" -v ac="$(hex_rgb "$AC")" '
+    function mixc(a, b, t) { return a * (1 - t) + b * t }
+    function shade(c, amt) { return amt >= 0 ? mixc(c, 255, amt) : mixc(c, 0, -amt) }
+    function emit(y, x, r, g, b, a) { printf "%d,%d: (%d,%d,%d,%d)\n", x, y, r, g, b, a }
+    BEGIN {
+      split(bg, B, " "); split(fg, F, " "); split(ac, A, " ")
+      lum = 0.299 * B[1] + 0.587 * B[2] + 0.114 * B[3]
+      light = (lum > 128)
+
+      depth = (kind == "item") ? 0.06 : (kind == "hover") ? 0.13 : 0.03
+      for (i = 1; i <= 3; i++) {
+        if (kind == "selected") {
+          fill[i]    = mixc(B[i], A[i], light ? 0.30 : 0.38)
+          outline[i] = light ? shade(A[i], -0.35) : shade(A[i], 0.18)
+        } else {
+          fill[i]    = light ? shade(B[i], -depth) : shade(B[i], depth + 0.04)
+          outline[i] = light ? shade(F[i], 0.05) : shade(B[i], -0.55)
+        }
+        hi[i]    = shade(fill[i], light ?  0.55 : 0.24)
+        lo[i]    = shade(fill[i], light ? -0.20 : -0.45)
+        inner[i] = shade(fill[i], light ? -0.11 : -0.22)
+      }
+      if (recessed) { for (i = 1; i <= 3; i++) { t = hi[i]; hi[i] = lo[i]; lo[i] = t } }
+
+      printf "# ImageMagick pixel enumeration: %d,%d,255,srgba\n", N, N
+      for (y = 0; y < N; y++) {
+        for (x = 0; x < N; x++) {
+          d = y; if (x < d) d = x
+          if (N - 1 - y < d) d = N - 1 - y
+          if (N - 1 - x < d) d = N - 1 - x
+
+          if (d == 0)      { for (i=1;i<=3;i++) c[i] = outline[i] }
+          else if (d == 1) { for (i=1;i<=3;i++) c[i] = (y == 1 || x == 1) ? hi[i] : lo[i] }
+          else if (d == 3) { for (i=1;i<=3;i++) c[i] = inner[i] }
+          else             { for (i=1;i<=3;i++) c[i] = fill[i] }
+
+          if (studs && (y == 2 || y == N-3) && (x == 2 || x == N-3)) {
+            for (i=1;i<=3;i++) c[i] = A[i]
+          }
+
+          # notch the hard corners so the plate reads as pixel art
+          a = 255
+          if ((y == 0 || y == N-1) && (x == 0 || x == N-1)) a = 0
+          emit(y, x, c[1], c[2], c[3], a)
+        }
+      }
+    }' | magick txt:- -filter point -resize "$((SCALE * 100))%" "$OUT/$1.png"
+}
+
+# 4x4 repeatable interior. GTK4 parses `border-image-slice: ... fill` without
+# error but never paints the middle region, so the centre is a tiled background.
+gen_center() {
+  [[ -f $OUT/$1.png ]] && return 0 # theme shipped this centre; leave it alone
+  awk -v kind="$2" \
+    -v bg="$(hex_rgb "$BG")" -v fg="$(hex_rgb "$FG")" -v ac="$(hex_rgb "$AC")" '
+    function mixc(a, b, t) { return a * (1 - t) + b * t }
+    function shade(c, amt) { return amt >= 0 ? mixc(c, 255, amt) : mixc(c, 0, -amt) }
+    BEGIN {
+      split(bg, B, " "); split(fg, F, " "); split(ac, A, " ")
+      lum = 0.299 * B[1] + 0.587 * B[2] + 0.114 * B[3]
+      light = (lum > 128)
+      depth = (kind == "item") ? 0.06 : (kind == "hover") ? 0.13 : 0.03
+      for (i = 1; i <= 3; i++) {
+        fill[i] = (kind == "selected") ? mixc(B[i], A[i], light ? 0.30 : 0.38) \
+                                       : (light ? shade(B[i], -depth) : shade(B[i], depth + 0.04))
+      }
+      print "# ImageMagick pixel enumeration: 4,4,255,srgba"
+      for (y = 0; y < 4; y++) for (x = 0; x < 4; x++) {
+        for (i = 1; i <= 3; i++) c[i] = fill[i]
+        if (y == 0 && x == 0) for (i=1;i<=3;i++) c[i] = shade(fill[i],  0.06)
+        if (y == 2 && x == 2) for (i=1;i<=3;i++) c[i] = shade(fill[i], -0.05)
+        printf "%d,%d: (%d,%d,%d,255)\n", x, y, c[1], c[2], c[3]
+      }
+    }' | magick txt:- -filter point -resize "$((SCALE * 100))%" "$OUT/$1.png"
+}
+
+gen_plate item          item     0 1
+gen_plate item-hover    hover    0 1
+gen_plate item-selected selected 0 1
+gen_plate input         input    1 0
+
+gen_center item-center          item
+gen_center item-hover-center    hover
+gen_center item-selected-center selected
+gen_center input-center         input

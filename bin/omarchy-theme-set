@@ -36,6 +36,7 @@ fi
 
 # Generate dynamic configs
 omarchy-theme-set-templates
+omarchy-theme-set-walker-sprites
 
 # Swap next theme in as current
 rm -rf "$CURRENT_THEME_PATH"
