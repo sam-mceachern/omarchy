@@ -56,14 +56,9 @@ scrollbar { opacity: 0; }
 .content-container { background: transparent; }
 .scroll            { background: transparent; }
 
-/* Gap between slots. */
-/* Slot geometry, all coupled - change one and recheck the others:
-     grid width 900 / 15 columns      = 60px cell
-     60 - (3px padding * 2)           = 54px slot
-     54 - (15px nine-patch frame * 2) = 24px content == icon size
-   That makes the cell exactly as wide as the slot is tall, so slots are square.
-   ItemBox fills its cell whatever halign says, so squareness comes from the
-   column count, not from the box's alignment. */
+/* Slot geometry: the cell is 86x66, measured off a running instance. The grid
+   width in layout.xml is pinned to 6 of them (516px); pin it too small and a
+   column silently drops rather than the slots shrinking. */
 child { padding: 3px; }
 
 /* Each slot: recessed, so the icon sits inside it. */
@@ -76,9 +71,11 @@ child { padding: 3px; }
   background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input-center.png");
   background-repeat: repeat;
   padding: 0px;
+  /* Centres the icon. ItemBox fills its grid cell and left-aligns the image,
+     and the cell is wider than the image, so the slack all lands on the right;
+     this pushes the image back off the left edge to balance it. Tuned to the
+     75px cell above -- re-tune if the grid width or column count changes. */
   padding-left: 10px;
-  /* Square slots: content box is 24x24 and the nine-patch frame adds 15px a
-     side, so every cell is exactly 54x54. Keep these two equal. */
   min-height: 30px;
   min-width: 20px;
 }
@@ -144,9 +141,8 @@ child:selected .item-box * { color: @selected-text; }
   padding: 2px;
 }
 
-/* ---- Open button (walker renders each action as a GtkButton) ---- */
 .keybinds {
-  margin: 0px 40px 40px 0px;
+  margin: 0px 12px 12px 0px;
 }
 .item-keybinds, .global-keybinds { background: transparent; }
 

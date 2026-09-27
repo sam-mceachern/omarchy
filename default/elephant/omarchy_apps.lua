@@ -43,6 +43,14 @@ local EXCLUDE_FILES = {
 -- typing. Two characters is enough to be deliberate.
 local MIN_SEARCH_CHARS = 2
 
+-- The grid is a fixed 6x8 of slots and does not scroll, so anything past slot
+-- 48 would simply be invisible. Those apps are dropped from the resting grid
+-- and treated exactly like excluded ones: still installed, still launchable,
+-- just search-only. Must match max_columns and the pinned grid size in
+-- default/walker/themes/inventory/layout.xml.
+local COLUMNS, ROWS = 6, 8
+local MAX_SLOTS = COLUMNS * ROWS
+
 local function trim(s)
   return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
@@ -111,6 +119,11 @@ function GetEntries(query)
         entry.PreviewType = "file"
       end
       entries[#entries + 1] = entry
+
+      -- Stop at a full grid. The manifest is name-sorted, so this keeps the
+      -- first 48 alphabetically; curate with omarchy-walker-app-exclude to
+      -- choose which apps hold a slot.
+      if not searching and #entries >= MAX_SLOTS then break end
     end
   end
   return entries

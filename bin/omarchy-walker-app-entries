@@ -40,6 +40,19 @@ SELF=${BASH_SOURCE[0]}
 # ICON_PX + 30px frame + 6px padding on both axes, so it is square too.
 ICON_PX=39
 GLYPH_PX=26
+
+# Detail-panel geometry. The panel is as wide as the grid (516px, pinned in
+# layout.xml) less its 15px nine-patch frame a side. Walker's preview stack
+# requests 300px of height regardless, so the canvas keeps that height and the
+# theme clips it; see render_preview.
+PANEL_W=486
+PANEL_H=300
+# Text is drawn to the right of the 62px icon, leaving PANEL_W - 96 for it.
+# This monospace font advances about 0.46 * pointsize per character, so at 20pt
+# that is ~35 columns and at 16pt ~44.
+NAME_COLS=42
+DESC_COLS=53
+DESC_LINES=2
 mkdir -p "$CACHE" "$ICON_CACHE"
 
 # Serialise. Both omarchy-theme-set and every elephant query call this, so a
@@ -134,23 +147,38 @@ square_icon() {
     -gravity center -extent "${ICON_PX}x${ICON_PX}" "$out" 2>/dev/null
 }
 
+# Truncates to $2 characters, keeping room for the ellipsis.
+ellipsize() {
+  local text=$1 max=$2
+  if (( ${#text} > max )); then printf '%s...' "${text:0:max-3}"; else printf '%s' "$text"; fi
+}
+
 render_preview() {
   local out=$1 iconfile=$2 name=$3 desc=$4
   [[ -f $out && $out -nt $SELF ]] && return 0
+  # Trim for display only; the untruncated name is what gets searched.
+  name=$(ellipsize "$name" "$NAME_COLS")
+  desc=$(ellipsize "$desc" $((DESC_COLS * DESC_LINES)))
   # Walker's preview stack is ~300px tall and cannot be shrunk from a theme, so
   # the panel is clipped to a short strip by PreviewClip in layout.xml. The image
   # is therefore rendered at the stack's own proportions with everything drawn in
   # the top band and the rest left transparent: that way the content lands at the
   # top of the stack and stays inside the visible strip, with no CSS margin hacks.
-  local args=(-size 880x300 xc:none)
+  local args=(-size "${PANEL_W}x${PANEL_H}" xc:none)
   if [[ -n $iconfile && -f $iconfile ]]; then
     args+=(\( "$iconfile" -background none -resize 62x62 \) -gravity northwest -geometry +10+12 -composite)
   fi
   args+=(-font "$FONT"
          -fill "$AC" -pointsize 13 -gravity northwest -annotate +86+10 "Name:"
          -fill "$FG" -pointsize 20 -gravity northwest -annotate +86+34 "$name"
-         -fill "$AC" -pointsize 13 -gravity northwest -annotate +86+66 "Description:"
-         -fill "$FG" -pointsize 16 -gravity northwest -annotate +86+90 "$desc")
+         -fill "$AC" -pointsize 13 -gravity northwest -annotate +86+66 "Description:")
+  # -annotate does not wrap, so fold by hand and stack the lines. Two lines at
+  # this width hold more text than the single line the old wide panel did.
+  local y=90 line
+  while IFS= read -r line; do
+    args+=(-fill "$FG" -pointsize 16 -gravity northwest -annotate "+86+$y" "$line")
+    y=$((y + 22))
+  done < <(printf '%s\n' "$desc" | fold -s -w "$DESC_COLS" | head -n "$DESC_LINES")
   magick "${args[@]}" "$out" 2>/dev/null
 }
 
@@ -170,7 +198,6 @@ for d in /usr/share/applications "$HOME/.local/share/applications"; do
     sub=${generic:-$comment}
     desc=${comment:-$generic}
     [[ -n $desc ]] || desc="No description available."
-    (( ${#desc} > 58 )) && desc="${desc:0:55}..."
 
     preview="$CACHE/$id.png"
     square="$ICON_CACHE/$id.png"

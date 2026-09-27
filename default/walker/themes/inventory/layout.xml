@@ -19,7 +19,8 @@
         <style>
           <class name="box-wrapper"></class>
         </style>
-        <property name="width-request">920</property>
+        <!-- 516px grid + 10px wrapper padding a side + 15px frame a side. -->
+        <property name="width-request">566</property>
         <property name="overflow">hidden</property>
         <property name="orientation">horizontal</property>
         <property name="valign">center</property>
@@ -75,8 +76,11 @@
                     <property name="hexpand">true</property>
                     <property name="vexpand">false</property>
                     <property name="valign">start</property>
-                    <property name="max-content-height">150</property>
-                    <property name="min-content-height">150</property>
+                    <!-- Tall enough that the open button, which floats in the
+                         bottom-right corner, clears the wrapped description
+                         (two lines ending around y=128 on the canvas). -->
+                    <property name="max-content-height">190</property>
+                    <property name="min-content-height">190</property>
                     <property name="propagate-natural-height">false</property>
                     <property name="vscrollbar-policy">external</property>
                     <property name="hscrollbar-policy">external</property>
@@ -158,13 +162,18 @@
                     <property name="hexpand">true</property>
                     <property name="can_focus">false</property>
                     <property name="overlay-scrolling">true</property>
-                    <!-- Pin the grid width so the cell arithmetic is exact:
-                         900 / 15 columns = 60px cell = 54px slot + 6px padding.
-                         Without a fixed width the grid is wider than expected and
-                         the cells spread out horizontally. -->
-                    <property name="max-content-width">900</property>
-                    <property name="min-content-width">900</property>
-                    <property name="max-content-height">460</property>
+                    <!-- Pin the grid to exactly 6 x 8 cells. The cell is
+                         86x66, measured off a running instance rather than
+                         derived: .item-box's padding-left widens the item and
+                         GtkGridView adds its own slack, so the arithmetic is
+                         not reliable here. 6*86 = 516, 8*66 = 528. Too narrow
+                         and a column silently drops (450 gave 5 columns).
+                         Kept in step with max_columns below, with the slot
+                         geometry in style.css, and with MAX_SLOTS in
+                         default/elephant/omarchy_apps.lua (6 * 8 = 48). -->
+                    <property name="max-content-width">516</property>
+                    <property name="min-content-width">516</property>
+                    <property name="max-content-height">528</property>
                     <property name="min-content-height">0</property>
                     <property name="propagate-natural-height">true</property>
                     <property name="propagate-natural-width">false</property>
@@ -175,7 +184,7 @@
                         <style>
                           <class name="list"></class>
                         </style>
-                        <property name="max_columns">15</property>
+                        <property name="max_columns">6</property>
                         <property name="can_focus">false</property>
                       </object>
                     </child>
