@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# omarchy:summary=Open the applications inventory grid
+
+# The geometry is coupled to the inventory theme and is easy to get wrong:
+#   --width 566   = the 516px grid (6 cells of 86px) plus the wrapper's
+#                   10px padding and 15px frame on each side
+#   --maxheight   = must clear a full 8-row grid (~874px) but stay under ~900,
+#                   past which walker stops sizing to content and fills the
+#                   whole screen
+# It therefore lives here rather than being repeated at every call site, so the
+# SUPER+SPACE binding and the Omarchy menu cannot drift apart. See
+# default/walker/themes/inventory/layout.xml for the matching grid box.
+
+exec omarchy-launch-walker --theme inventory -m menus:omarchyapps \
+  --width 566 --minheight 1 --maxheight 890 "$@"
