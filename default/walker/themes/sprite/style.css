@@ -91,3 +91,14 @@ child:selected .item-box * { color: @selected-text; }
 .current       { font-style: italic; }
 
 .keybind-hints { background: transparent; padding: 6px; margin-top: 4px; }
+
+/* Action hints are enabled globally so the inventory theme can render them as a
+   clickable open button; the sprite theme keeps the menus uncluttered. */
+.keybinds, .keybind, .keybind-button, .keybind-label, .keybind-bind {
+  font-size: 0px;
+  min-height: 0px;
+  min-width: 0px;
+  margin: 0px;
+  padding: 0px;
+  opacity: 0;
+}

@@ -11,4 +11,21 @@ if ! pgrep -f "walker --gapplication-service" > /dev/null; then
   setsid uwsm-app -- env GSK_RENDERER=cairo walker --gapplication-service &
 fi
 
-exec walker --width 644 --maxheight 300 --minheight 300 "$@"
+# Apply the stock geometry only where the caller has not asked for its own.
+# GLib option parsing takes the FIRST occurrence of a flag, so appending "$@"
+# after hardcoded defaults meant a caller's --width/--minheight/--maxheight were
+# silently ignored.
+has_flag() {
+  local want=$1 a
+  for a in "$@"; do
+    [[ $a == "$want" || $a == "$want="* ]] && return 0
+  done
+  return 1
+}
+
+defaults=()
+has_flag --width     "$@" || defaults+=(--width 644)
+has_flag --maxheight "$@" || defaults+=(--maxheight 300)
+has_flag --minheight "$@" || defaults+=(--minheight 300)
+
+exec walker "${defaults[@]}" "$@"

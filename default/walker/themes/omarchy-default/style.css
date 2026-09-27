@@ -119,3 +119,13 @@ child:selected {
 .preview {
 }
 
+
+/* See default/walker/themes/sprite/style.css - action hints are on globally. */
+.keybinds, .keybind, .keybind-button, .keybind-label, .keybind-bind {
+  font-size: 0px;
+  min-height: 0px;
+  min-width: 0px;
+  margin: 0px;
+  padding: 0px;
+  opacity: 0;
+}

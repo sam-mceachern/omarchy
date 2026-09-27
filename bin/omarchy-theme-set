@@ -45,6 +45,18 @@ mv "$NEXT_THEME_PATH" "$CURRENT_THEME_PATH"
 # Store theme name for reference
 echo "$THEME_NAME" >"$HOME/.config/omarchy/current/theme.name"
 
+# The inventory launcher caches a composited detail-panel image per app, keyed by
+# theme (the text is drawn in the theme's colours). Regenerate for the new palette
+# and let elephant re-query so the panel isn't left showing the old theme. Done
+# detached because a cold cache takes a few seconds. Elephant runs in its own
+# scope, so restarting it is safe here -- unlike walker, whose unit is
+# ExitType=cgroup and would kill this script mid-flight.
+if command -v omarchy-walker-app-entries >/dev/null; then
+  setsid bash -c 'omarchy-walker-app-entries >/dev/null 2>&1
+    systemctl --user is-enabled elephant.service &>/dev/null &&
+      systemctl --user restart elephant.service >/dev/null 2>&1' &
+fi
+
 # Change background with theme
 if [[ $OMARCHY_THEME_SKIP_BACKGROUND != "1" ]]; then
   omarchy-theme-bg-next

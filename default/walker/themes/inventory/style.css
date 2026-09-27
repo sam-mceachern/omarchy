@@ -1,0 +1,163 @@
+/* Walker "inventory" theme -- the application launcher as an RPG inventory grid.
+ *
+ * Scoped to the app launcher only, via `--theme inventory` on the SUPER+SPACE
+ * binding, so omarchy-menu and the dmenu prompts keep their own theme.
+ *
+ * Reuses the nine-patch sprites generated per theme into
+ * ~/.config/omarchy/current/theme/walker-sprites/, so it tracks both themes
+ * automatically. Panel is a raised plate; each slot is recessed, so items read
+ * as sitting IN the grid. See default/walker/themes/sprite/style.css for the
+ * border-image rules and the GTK4 caveats.
+ */
+@import "../../../../../../../.config/omarchy/current/theme/walker.css";
+
+* { all: unset; }
+
+* {
+  font-family: monospace;
+  color: @text;
+}
+
+scrollbar { opacity: 0; }
+
+/* The inventory panel itself: raised plate. */
+.box-wrapper {
+  border: 15px solid transparent;
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item.png");
+  border-image-slice: 15 15 15 15;
+  border-image-width: 15px;
+  border-image-repeat: repeat;
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-center.png");
+  background-repeat: repeat;
+  padding: 10px;
+}
+
+/* Search doubles as the panel header. */
+.search-container {
+  background: transparent;
+  padding: 0px;
+  margin-bottom: 10px;
+}
+
+.input {
+  border: 15px solid transparent;
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input.png");
+  border-image-slice: 15 15 15 15;
+  border-image-width: 15px;
+  border-image-repeat: repeat;
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input-center.png");
+  background-repeat: repeat;
+  font-size: 16px;
+  padding: 0px 2px;
+}
+.input placeholder { opacity: 0.5; }
+.input:focus, .input:active { box-shadow: none; outline: none; }
+
+.content-container { background: transparent; }
+.scroll            { background: transparent; }
+
+/* Gap between slots. */
+child { padding: 3px; }
+
+/* Each slot: recessed, so the icon sits inside it. */
+.item-box {
+  border: 15px solid transparent;
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input.png");
+  border-image-slice: 15 15 15 15;
+  border-image-width: 15px;
+  border-image-repeat: repeat;
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input-center.png");
+  background-repeat: repeat;
+  padding: 0px;
+  /* Square slots: content box is 24x24 and the nine-patch frame adds 15px a
+     side, so every cell is exactly 54x54. Keep these two equal. */
+  min-height: 24px;
+  min-width: 24px;
+}
+
+child:hover .item-box {
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-hover.png");
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-hover-center.png");
+}
+
+child:selected .item-box {
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-selected.png");
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-selected-center.png");
+}
+
+child:selected             { background: transparent; }
+child:selected .item-box * { color: @selected-text; }
+
+.item-text-box { all: unset; }
+
+/* Labels live in the detail panel now, not in the slot. */
+.item-text,
+.item-subtext {
+  font-size: 0px;
+  min-height: 0px;
+  min-width: 0px;
+  margin: 0px;
+  padding: 0px;
+  opacity: 0;
+}
+.item-text-box { all: unset; min-height: 0px; }
+
+.item-image { -gtk-icon-transform: scale(0.95); }
+
+.keybind-hints { background: transparent; padding: 4px; margin-top: 6px; font-size: 11px; }
+.placeholder   { padding: 20px; }
+
+/* ---- Detail panel: shows the selected app's icon, name and description ---- */
+.preview {
+  border: 15px solid transparent;
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input.png");
+  border-image-slice: 15 15 15 15;
+  border-image-width: 15px;
+  border-image-repeat: repeat;
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input-center.png");
+  background-repeat: repeat;
+  margin-bottom: 8px;
+  padding: 2px;
+}
+
+.preview-box, .preview-stack { background: transparent; }
+
+.preview-content,
+.preview-content * {
+  font-size: 13px;
+  color: @text;
+  padding: 2px;
+}
+
+/* ---- Open button (walker renders each action as a GtkButton) ---- */
+.keybinds {
+  margin: 0px 10px 8px 0px;
+}
+.item-keybinds, .global-keybinds { background: transparent; }
+
+.keybind-button {
+  border: 15px solid transparent;
+  min-width: 46px;
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item.png");
+  border-image-slice: 15 15 15 15;
+  border-image-width: 15px;
+  border-image-repeat: repeat;
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-center.png");
+  background-repeat: repeat;
+  padding: 2px 14px;
+}
+
+.keybind-button:hover {
+  border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-selected.png");
+  background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/item-selected-center.png");
+}
+
+.keybind-label {
+  font-size: 14px;
+  color: @text;
+}
+
+/* the raw keybind glyph next to the label adds noise here */
+.keybind-bind { font-size: 0px; opacity: 0; margin: 0px; padding: 0px; }
+
+

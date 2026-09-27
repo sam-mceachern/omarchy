@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# omarchy:summary=Enumerate desktop apps for the Walker inventory launcher
+# omarchy:hidden=true
+
+# Emits one TSV record per visible application:
+#   id <TAB> name <TAB> subtext <TAB> icon <TAB> preview.png
+#
+# Also renders the detail-panel image for each app. A walker/elephant preview is
+# either text OR a file, never both, so showing the icon beside the name and
+# description means compositing them into a single PNG. Results are cached per
+# theme (the text is drawn in the theme's foreground colour) and only rendered
+# when missing, so this costs ~10ms per new app and nothing on later runs.
+
+set -uo pipefail
+
+THEME=$(cat "$HOME/.config/omarchy/current/theme.name" 2>/dev/null || echo default)
+COLORS="$HOME/.config/omarchy/current/theme/colors.toml"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-previews/$THEME"
+mkdir -p "$CACHE"
+
+# Serialise. Both omarchy-theme-set and every elephant query call this, so a
+# theme switch can otherwise start several cold runs at once; they then all
+# rebuild the icon index and render the same files, which is far slower than
+# doing it once. Callers queue instead, and everyone after the first finds a
+# warm cache and returns in well under a second.
+LOCK="${XDG_RUNTIME_DIR:-/tmp}/omarchy-walker-app-entries.lock"
+exec 9>"$LOCK" || true
+flock 9 2>/dev/null || true
+
+read_color() {
+  sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"(#[0-9a-fA-F]{6})\".*/\1/p" "$COLORS" 2>/dev/null | head -1
+}
+FG=$(read_color foreground); FG=${FG:-#cccccc}
+AC=$(read_color accent);     AC=${AC:-$FG}
+FONT=$(fc-match monospace --format='%{file}' 2>/dev/null)
+
+# Name -> file index for icon themes, preferring larger rasters. Built lazily:
+# scanning the icon dirs costs ~2s, and it is only needed when a preview is
+# missing from the cache, which is rare after the first run.
+declare -A ICON
+ICON_INDEXED=0
+build_icon_index() {
+  (( ICON_INDEXED )) && return 0
+  ICON_INDEXED=1
+  while IFS= read -r p; do
+    b=${p##*/}; b=${b%.*}
+    case "$p" in
+      */512x512/*|*/256x256/*) s=6 ;;
+      */128x128/*)             s=5 ;;
+      */scalable/*)            s=4 ;;
+      */96x96/*|*/64x64/*)     s=3 ;;
+      */48x48/*)               s=2 ;;
+      *)                       s=1 ;;
+    esac
+    prev=${ICON[$b]:-}
+    if [[ -z $prev || ${prev%%:*} -lt $s ]]; then ICON[$b]="$s:$p"; fi
+  done < <(find -L /usr/share/icons "$HOME/.local/share/icons" /usr/share/pixmaps \
+             -type f \( -name '*.png' -o -name '*.svg' -o -name '*.xpm' \) 2>/dev/null)
+}
+
+# Sets RESOLVED_ICON rather than echoing. Echoing would mean calling this in a
+# command substitution, which runs in a subshell -- and that discards both the
+# memoised icon index and the ICON_INDEXED flag, so the index gets rebuilt once
+# per app instead of once per run.
+RESOLVED_ICON=""
+resolve_icon() {
+  local ic=$1
+  RESOLVED_ICON=""
+  [[ -z $ic ]] && return 1
+  if [[ $ic == /* && -f $ic ]]; then RESOLVED_ICON=$ic; return 0; fi
+  build_icon_index
+  local e=${ICON[$ic]:-}
+  [[ -n $e ]] && { RESOLVED_ICON=${e#*:}; return 0; }
+  return 1
+}
+
+render_preview() {
+  local out=$1 iconfile=$2 name=$3 desc=$4
+  [[ -f $out ]] && return 0
+  # Walker's preview stack is ~300px tall and cannot be shrunk from a theme, so
+  # the panel is clipped to a short strip by PreviewClip in layout.xml. The image
+  # is therefore rendered at the stack's own proportions with everything drawn in
+  # the top band and the rest left transparent: that way the content lands at the
+  # top of the stack and stays inside the visible strip, with no CSS margin hacks.
+  local args=(-size 880x300 xc:none)
+  if [[ -n $iconfile && -f $iconfile ]]; then
+    args+=(\( "$iconfile" -background none -resize 62x62 \) -gravity northwest -geometry +10+12 -composite)
+  fi
+  args+=(-font "$FONT"
+         -fill "$AC" -pointsize 11 -gravity northwest -annotate +86+8  "Name:"
+         -fill "$FG" -pointsize 14 -gravity northwest -annotate +86+22 "$name"
+         -fill "$AC" -pointsize 11 -gravity northwest -annotate +86+46 "Description:"
+         -fill "$FG" -pointsize 12 -gravity northwest -annotate +86+60 "$desc")
+  magick "${args[@]}" "$out" 2>/dev/null
+}
+
+shopt -s nullglob
+for d in /usr/share/applications "$HOME/.local/share/applications"; do
+  [[ -d $d ]] || continue
+  for f in "$d"/*.desktop; do
+    grep -q '^NoDisplay=true' "$f" && continue
+    grep -q '^Type=Application' "$f" || continue
+    id=$(basename "$f" .desktop)
+    name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
+    [[ -n $name ]] || continue
+    comment=$(grep -m1 '^Comment=' "$f" | cut -d= -f2-)
+    generic=$(grep -m1 '^GenericName=' "$f" | cut -d= -f2-)
+    icon=$(grep -m1 '^Icon=' "$f" | cut -d= -f2-)
+
+    sub=${generic:-$comment}
+    desc=${comment:-$generic}
+    [[ -n $desc ]] || desc="No description available."
+    (( ${#desc} > 58 )) && desc="${desc:0:55}..."
+
+    preview="$CACHE/$id.png"
+    if [[ ! -f $preview ]]; then
+      resolve_icon "$icon"
+      render_preview "$preview" "$RESOLVED_ICON" "$name" "$desc"
+    fi
+    [[ -f $preview ]] || preview=""
+
+    printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$sub" "$icon" "$preview"
+  done
+done | sort -u -t"$(printf '\t')" -k2,2
