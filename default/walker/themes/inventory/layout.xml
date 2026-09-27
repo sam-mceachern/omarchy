@@ -158,11 +158,16 @@
                     <property name="hexpand">true</property>
                     <property name="can_focus">false</property>
                     <property name="overlay-scrolling">true</property>
+                    <!-- Pin the grid width so the cell arithmetic is exact:
+                         900 / 15 columns = 60px cell = 54px slot + 6px padding.
+                         Without a fixed width the grid is wider than expected and
+                         the cells spread out horizontally. -->
                     <property name="max-content-width">900</property>
+                    <property name="min-content-width">900</property>
                     <property name="max-content-height">460</property>
                     <property name="min-content-height">0</property>
                     <property name="propagate-natural-height">true</property>
-                    <property name="propagate-natural-width">true</property>
+                    <property name="propagate-natural-width">false</property>
                     <property name="hscrollbar-policy">automatic</property>
                     <property name="vscrollbar-policy">automatic</property>
                     <child>
@@ -170,7 +175,7 @@
                         <style>
                           <class name="list"></class>
                         </style>
-                        <property name="max_columns">10</property>
+                        <property name="max_columns">15</property>
                         <property name="can_focus">false</property>
                       </object>
                     </child>

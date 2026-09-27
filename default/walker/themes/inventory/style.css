@@ -57,6 +57,13 @@ scrollbar { opacity: 0; }
 .scroll            { background: transparent; }
 
 /* Gap between slots. */
+/* Slot geometry, all coupled - change one and recheck the others:
+     grid width 900 / 15 columns      = 60px cell
+     60 - (3px padding * 2)           = 54px slot
+     54 - (15px nine-patch frame * 2) = 24px content == icon size
+   That makes the cell exactly as wide as the slot is tall, so slots are square.
+   ItemBox fills its cell whatever halign says, so squareness comes from the
+   column count, not from the box's alignment. */
 child { padding: 3px; }
 
 /* Each slot: recessed, so the icon sits inside it. */
@@ -69,10 +76,11 @@ child { padding: 3px; }
   background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input-center.png");
   background-repeat: repeat;
   padding: 0px;
+  padding-left: 10px;
   /* Square slots: content box is 24x24 and the nine-patch frame adds 15px a
      side, so every cell is exactly 54x54. Keep these two equal. */
-  min-height: 24px;
-  min-width: 24px;
+  min-height: 30px;
+  min-width: 20px;
 }
 
 child:hover .item-box {
@@ -102,7 +110,11 @@ child:selected .item-box * { color: @selected-text; }
 }
 .item-text-box { all: unset; min-height: 0px; }
 
-.item-image { -gtk-icon-transform: scale(0.95); }
+.item-image {
+  -gtk-icon-size: 30px;
+  min-width: 25px;
+  min-height: 25px;
+}
 
 .keybind-hints { background: transparent; padding: 4px; margin-top: 6px; font-size: 11px; }
 .placeholder   { padding: 20px; }
@@ -162,5 +174,3 @@ child:selected .item-box * { color: @selected-text; }
 
 /* the raw keybind glyph next to the label adds noise here */
 .keybind-bind { font-size: 0px; opacity: 0; margin: 0px; padding: 0px; }
-
-

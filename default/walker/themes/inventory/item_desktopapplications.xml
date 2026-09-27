@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"></requires>
-  <!-- Icon-only slot. The name and description live in the detail panel, so the
-       ItemText/ItemSubtext labels are omitted entirely rather than hidden with
-       CSS - a collapsed label still takes part in the box's centring and pushes
-       the icon off-centre. -->
+  <!-- Icon-only inventory slot.
+
+       Walker rebuilds each item and keeps only the widget ids it knows
+       (ItemBox, ItemImage, ItemText, ItemSubtext, QuickActivation). Any extra
+       wrapper box added here is dropped from the tree, so the frame has to live
+       on ItemBox itself - and ItemBox always fills its GtkGridView cell. -->
   <object class="GtkBox" id="ItemBox">
     <style>
       <class name="item-box"></class>
@@ -12,8 +14,6 @@
     <property name="orientation">vertical</property>
     <property name="halign">fill</property>
     <property name="valign">fill</property>
-    <property name="hexpand">true</property>
-    <property name="vexpand">true</property>
     <child>
       <object class="GtkImage" id="ItemImage">
         <style>

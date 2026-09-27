@@ -17,7 +17,17 @@ set -uo pipefail
 THEME=$(cat "$HOME/.config/omarchy/current/theme.name" 2>/dev/null || echo default)
 COLORS="$HOME/.config/omarchy/current/theme/colors.toml"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-previews/$THEME"
-mkdir -p "$CACHE"
+# Slot icons are theme-independent, so they live outside the per-theme cache.
+ICON_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-icons"
+# The rendered icon canvas is also the slot's content box. Walker's ItemBox
+# fills its grid cell and left-aligns the image inside it, and neither halign
+# nor an extra wrapper widget can change that (walker rebuilds each item and
+# drops widgets it does not know). Making the canvas square and letting it fill
+# the content box is what centres the glyph: the slot ends up
+# ICON_PX + 30px frame + 6px padding on both axes, so it is square too.
+ICON_PX=39
+GLYPH_PX=26
+mkdir -p "$CACHE" "$ICON_CACHE"
 
 # Serialise. Both omarchy-theme-set and every elephant query call this, so a
 # theme switch can otherwise start several cold runs at once; they then all
@@ -75,6 +85,20 @@ resolve_icon() {
   return 1
 }
 
+# Normalise every icon to a square PNG at exactly the slot's display size.
+# Icons that resolve to a file path (rather than an icon-theme name) ignore
+# GtkImage's pixel-size and render at their own aspect - a 709x512 app icon comes
+# out ~39px wide. GtkGridView then sizes every column to the widest item, which
+# makes the whole grid rectangular and throws the icons off-centre. Pre-squaring
+# them removes the variable entirely.
+square_icon() {
+  local out=$1 src=$2
+  [[ -f $out ]] && return 0
+  [[ -n $src && -f $src ]] || return 1
+  magick "$src" -background none -resize "${GLYPH_PX}x${GLYPH_PX}" \
+    -gravity center -extent "${ICON_PX}x${ICON_PX}" "$out" 2>/dev/null
+}
+
 render_preview() {
   local out=$1 iconfile=$2 name=$3 desc=$4
   [[ -f $out ]] && return 0
@@ -114,10 +138,14 @@ for d in /usr/share/applications "$HOME/.local/share/applications"; do
     (( ${#desc} > 58 )) && desc="${desc:0:55}..."
 
     preview="$CACHE/$id.png"
-    if [[ ! -f $preview ]]; then
+    square="$ICON_CACHE/$id.png"
+    if [[ ! -f $preview || ! -f $square ]]; then
       resolve_icon "$icon"
       render_preview "$preview" "$RESOLVED_ICON" "$name" "$desc"
+      square_icon "$square" "$RESOLVED_ICON"
     fi
+    # fall back to the raw icon name if squaring failed
+    [[ -f $square ]] && icon=$square
     [[ -f $preview ]] || preview=""
 
     printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$sub" "$icon" "$preview"
