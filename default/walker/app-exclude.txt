@@ -14,3 +14,16 @@ Hardware Locality Lstopo
 Avahi SSH Server Browser
 Avahi VNC Server Browser
 Avahi Zeroconf Browser
+Files
+Manage Printing
+mvp Media Player
+btop++
+CMake
+Customize Look and Feel
+Disk Usage
+Disks
+fcitx 5 Configuration
+Image Viewer
+Kdenlive
+Kvantum Manager
+Limine-snapper-restore

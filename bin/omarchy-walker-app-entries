@@ -28,6 +28,10 @@ CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-previews/$THEME"
 ICON_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-icons"
 MANIFEST="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-entries.tsv"
 MODE=${1:-}
+# Anything rendered before this script was last edited is stale: the icon sizes
+# and the panel layout below are baked into the cached PNGs, so changing them
+# has to invalidate the cache or the edit appears to do nothing.
+SELF=${BASH_SOURCE[0]}
 # The rendered icon canvas is also the slot's content box. Walker's ItemBox
 # fills its grid cell and left-aligns the image inside it, and neither halign
 # nor an extra wrapper widget can change that (walker rebuilds each item and
@@ -52,7 +56,7 @@ is_fresh() {
   local m t ref
   m=$(stat -c %Y "$MANIFEST" 2>/dev/null) || return 1
   for ref in /usr/share/applications "$HOME/.local/share/applications" \
-             "$HOME/.config/omarchy/current/theme.name"; do
+             "$HOME/.config/omarchy/current/theme.name" "$SELF"; do
     [[ -e $ref ]] || continue
     t=$(stat -c %Y "$ref" 2>/dev/null) || continue
     (( t > m )) && return 1
@@ -124,7 +128,7 @@ resolve_icon() {
 # them removes the variable entirely.
 square_icon() {
   local out=$1 src=$2
-  [[ -f $out ]] && return 0
+  [[ -f $out && $out -nt $SELF ]] && return 0
   [[ -n $src && -f $src ]] || return 1
   magick "$src" -background none -resize "${GLYPH_PX}x${GLYPH_PX}" \
     -gravity center -extent "${ICON_PX}x${ICON_PX}" "$out" 2>/dev/null
@@ -132,7 +136,7 @@ square_icon() {
 
 render_preview() {
   local out=$1 iconfile=$2 name=$3 desc=$4
-  [[ -f $out ]] && return 0
+  [[ -f $out && $out -nt $SELF ]] && return 0
   # Walker's preview stack is ~300px tall and cannot be shrunk from a theme, so
   # the panel is clipped to a short strip by PreviewClip in layout.xml. The image
   # is therefore rendered at the stack's own proportions with everything drawn in
@@ -143,10 +147,10 @@ render_preview() {
     args+=(\( "$iconfile" -background none -resize 62x62 \) -gravity northwest -geometry +10+12 -composite)
   fi
   args+=(-font "$FONT"
-         -fill "$AC" -pointsize 11 -gravity northwest -annotate +86+8  "Name:"
-         -fill "$FG" -pointsize 14 -gravity northwest -annotate +86+22 "$name"
-         -fill "$AC" -pointsize 11 -gravity northwest -annotate +86+46 "Description:"
-         -fill "$FG" -pointsize 12 -gravity northwest -annotate +86+60 "$desc")
+         -fill "$AC" -pointsize 13 -gravity northwest -annotate +86+10 "Name:"
+         -fill "$FG" -pointsize 20 -gravity northwest -annotate +86+34 "$name"
+         -fill "$AC" -pointsize 13 -gravity northwest -annotate +86+66 "Description:"
+         -fill "$FG" -pointsize 16 -gravity northwest -annotate +86+90 "$desc")
   magick "${args[@]}" "$out" 2>/dev/null
 }
 
@@ -170,7 +174,7 @@ for d in /usr/share/applications "$HOME/.local/share/applications"; do
 
     preview="$CACHE/$id.png"
     square="$ICON_CACHE/$id.png"
-    if [[ ! -f $preview || ! -f $square ]]; then
+    if [[ ! -f $preview || ! -f $square || $preview -ot $SELF || $square -ot $SELF ]]; then
       resolve_icon "$icon"
       render_preview "$preview" "$RESOLVED_ICON" "$name" "$desc"
       square_icon "$square" "$RESOLVED_ICON"
