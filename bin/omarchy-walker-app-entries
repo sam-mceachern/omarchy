@@ -47,12 +47,22 @@ GLYPH_PX=26
 # theme clips it; see render_preview.
 PANEL_W=486
 PANEL_H=300
-# Text is drawn to the right of the 62px icon, leaving PANEL_W - 96 for it.
-# This monospace font advances about 0.46 * pointsize per character, so at 20pt
-# that is ~35 columns and at 16pt ~44.
-NAME_COLS=42
-DESC_COLS=53
+# Insets from the panel's inner edge, and the icon it draws top-left.
+PAD_X=18
+PAD_Y=14
+ICON_BOX=72
+# Text column starts clear of the icon; TEXT_X is where every line aligns.
+TEXT_X=$((PAD_X + ICON_BOX + 16))
+# This monospace font advances about 0.46 * pointsize per character, so the
+# PANEL_W - TEXT_X - PAD_X that is left comes to ~39 columns at 20pt and ~49
+# at 16pt.
+NAME_COLS=39
+DESC_COLS=49
 DESC_LINES=2
+# The open button floats over the panel's bottom-right corner, level with the
+# last description line, so that line has to stop short of it. The button is
+# about 98px wide plus its 14px margin.
+DESC_LAST_COLS=34
 mkdir -p "$CACHE" "$ICON_CACHE"
 
 # Serialise. Both omarchy-theme-set and every elephant query call this, so a
@@ -158,7 +168,7 @@ render_preview() {
   [[ -f $out && $out -nt $SELF ]] && return 0
   # Trim for display only; the untruncated name is what gets searched.
   name=$(ellipsize "$name" "$NAME_COLS")
-  desc=$(ellipsize "$desc" $((DESC_COLS * DESC_LINES)))
+  desc=$(ellipsize "$desc" $((DESC_COLS + DESC_LAST_COLS)))
   # Walker's preview stack is ~300px tall and cannot be shrunk from a theme, so
   # the panel is clipped to a short strip by PreviewClip in layout.xml. The image
   # is therefore rendered at the stack's own proportions with everything drawn in
@@ -166,17 +176,24 @@ render_preview() {
   # top of the stack and stays inside the visible strip, with no CSS margin hacks.
   local args=(-size "${PANEL_W}x${PANEL_H}" xc:none)
   if [[ -n $iconfile && -f $iconfile ]]; then
-    args+=(\( "$iconfile" -background none -resize 62x62 \) -gravity northwest -geometry +10+12 -composite)
+    args+=(\( "$iconfile" -background none -resize "${ICON_BOX}x${ICON_BOX}" \)
+           -gravity northwest -geometry "+${PAD_X}+$((PAD_Y + 2))" -composite)
   fi
+  # Label / value pairs on a consistent rhythm: label, then its value 24px
+  # below, then 32px to the next label. The whole block is top-aligned with the
+  # icon and must finish above the open button, which floats over the panel's
+  # bottom-right corner (see .keybinds in style.css).
   args+=(-font "$FONT"
-         -fill "$AC" -pointsize 13 -gravity northwest -annotate +86+10 "Name:"
-         -fill "$FG" -pointsize 20 -gravity northwest -annotate +86+34 "$name"
-         -fill "$AC" -pointsize 13 -gravity northwest -annotate +86+66 "Description:")
+         -fill "$AC" -pointsize 13 -gravity northwest -annotate "+${TEXT_X}+${PAD_Y}"          "Name:"
+         -fill "$FG" -pointsize 20 -gravity northwest -annotate "+${TEXT_X}+$((PAD_Y + 24))"   "$name"
+         -fill "$AC" -pointsize 13 -gravity northwest -annotate "+${TEXT_X}+$((PAD_Y + 56))"   "Description:")
   # -annotate does not wrap, so fold by hand and stack the lines. Two lines at
   # this width hold more text than the single line the old wide panel did.
-  local y=90 line
+  local y=$((PAD_Y + 80)) line i=0
   while IFS= read -r line; do
-    args+=(-fill "$FG" -pointsize 16 -gravity northwest -annotate "+86+$y" "$line")
+    i=$((i + 1))
+    (( i == DESC_LINES )) && line=$(ellipsize "$line" "$DESC_LAST_COLS")
+    args+=(-fill "$FG" -pointsize 16 -gravity northwest -annotate "+${TEXT_X}+$y" "$line")
     y=$((y + 22))
   done < <(printf '%s\n' "$desc" | fold -s -w "$DESC_COLS" | head -n "$DESC_LINES")
   magick "${args[@]}" "$out" 2>/dev/null

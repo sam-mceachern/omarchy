@@ -76,9 +76,6 @@
                     <property name="hexpand">true</property>
                     <property name="vexpand">false</property>
                     <property name="valign">start</property>
-                    <!-- Tall enough that the open button, which floats in the
-                         bottom-right corner, clears the wrapped description
-                         (two lines ending around y=128 on the canvas). -->
                     <property name="max-content-height">190</property>
                     <property name="min-content-height">190</property>
                     <property name="propagate-natural-height">false</property>
