@@ -36,8 +36,8 @@ fi
 
 sudo pacman -Syu --noconfirm --needed git
 
-# Use custom repo if specified, otherwise default to basecamp/omarchy
-OMARCHY_REPO="${OMARCHY_REPO:-basecamp/omarchy}"
+# Use custom repo if specified, otherwise default to the fork
+OMARCHY_REPO="${OMARCHY_REPO:-sam-mceachern/omarchy}"
 
 echo -e "\nCloning Omarchy from: https://github.com/${OMARCHY_REPO}.git"
 echo -e "\e[32mUsing branch: $OMARCHY_REF\e[0m"
