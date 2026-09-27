@@ -6,6 +6,13 @@
 # Emits one TSV record per visible application:
 #   id <TAB> name <TAB> subtext <TAB> icon <TAB> preview.png
 #
+# The same records are written to a manifest file, which is what the elephant
+# lua provider actually reads. The provider runs on every keystroke and its lua
+# state is destroyed between calls, so it cannot memoise anything itself and
+# cannot afford to fork this script per keypress; reading the manifest costs
+# nothing. `--sync` refreshes the manifest without printing it, and returns
+# immediately when nothing has changed.
+#
 # Also renders the detail-panel image for each app. A walker/elephant preview is
 # either text OR a file, never both, so showing the icon beside the name and
 # description means compositing them into a single PNG. Results are cached per
@@ -19,6 +26,8 @@ COLORS="$HOME/.config/omarchy/current/theme/colors.toml"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-previews/$THEME"
 # Slot icons are theme-independent, so they live outside the per-theme cache.
 ICON_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-icons"
+MANIFEST="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-entries.tsv"
+MODE=${1:-}
 # The rendered icon canvas is also the slot's content box. Walker's ItemBox
 # fills its grid cell and left-aligns the image inside it, and neither halign
 # nor an extra wrapper widget can change that (walker rebuilds each item and
@@ -34,9 +43,31 @@ mkdir -p "$CACHE" "$ICON_CACHE"
 # rebuild the icon index and render the same files, which is far slower than
 # doing it once. Callers queue instead, and everyone after the first finds a
 # warm cache and returns in well under a second.
+# A rebuild is only needed when the set of .desktop files changed (both dirs'
+# mtimes move on add/remove) or when the theme changed (previews are rendered in
+# the theme's colours, so they live in a per-theme cache). Checked before taking
+# the lock so the common "nothing changed" case never waits on a running build.
+is_fresh() {
+  [[ -s $MANIFEST ]] || return 1
+  local m t ref
+  m=$(stat -c %Y "$MANIFEST" 2>/dev/null) || return 1
+  for ref in /usr/share/applications "$HOME/.local/share/applications" \
+             "$HOME/.config/omarchy/current/theme.name"; do
+    [[ -e $ref ]] || continue
+    t=$(stat -c %Y "$ref" 2>/dev/null) || continue
+    (( t > m )) && return 1
+  done
+  return 0
+}
+
+[[ $MODE == --sync ]] && is_fresh && exit 0
+
 LOCK="${XDG_RUNTIME_DIR:-/tmp}/omarchy-walker-app-entries.lock"
 exec 9>"$LOCK" || true
 flock 9 2>/dev/null || true
+
+# Another queued run may have rebuilt it while this one waited for the lock.
+[[ $MODE == --sync ]] && is_fresh && exit 0
 
 read_color() {
   sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"(#[0-9a-fA-F]{6})\".*/\1/p" "$COLORS" 2>/dev/null | head -1
@@ -150,4 +181,13 @@ for d in /usr/share/applications "$HOME/.local/share/applications"; do
 
     printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$sub" "$icon" "$preview"
   done
-done | sort -u -t"$(printf '\t')" -k2,2
+done | sort -u -t"$(printf '\t')" -k2,2 >"$MANIFEST.$$"
+
+if [[ -s $MANIFEST.$$ ]]; then
+  mv -f "$MANIFEST.$$" "$MANIFEST"
+else
+  # Never replace a good manifest with an empty one (e.g. a failed render run).
+  rm -f "$MANIFEST.$$"
+fi
+
+[[ $MODE == --sync ]] || cat "$MANIFEST" 2>/dev/null

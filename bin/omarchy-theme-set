@@ -52,7 +52,7 @@ echo "$THEME_NAME" >"$HOME/.config/omarchy/current/theme.name"
 # scope, so restarting it is safe here -- unlike walker, whose unit is
 # ExitType=cgroup and would kill this script mid-flight.
 if command -v omarchy-walker-app-entries >/dev/null; then
-  setsid bash -c 'omarchy-walker-app-entries >/dev/null 2>&1
+  setsid bash -c 'omarchy-walker-app-entries --sync >/dev/null 2>&1
     systemctl --user is-enabled elephant.service &>/dev/null &&
       systemctl --user restart elephant.service >/dev/null 2>&1' &
 fi

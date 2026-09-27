@@ -1,0 +1,16 @@
+# Apps listed here are hidden from the Walker inventory grid at rest, and show
+# up only once you type a search for them. This is the repo baseline; it is
+# meant for entries that are noise on every machine.
+#
+# Your own exclusions belong in ~/.config/omarchy/walker-app-exclude.txt, which
+# is read in addition to this file:
+#
+#   omarchy-walker-app-exclude add "Some App"
+#
+# One name per line, matched case-insensitively against the app's display name
+# or its .desktop id.
+Ghostty
+Hardware Locality Lstopo
+Avahi SSH Server Browser
+Avahi VNC Server Browser
+Avahi Zeroconf Browser

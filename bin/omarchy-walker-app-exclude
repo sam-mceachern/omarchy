@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# omarchy:summary=Manage which apps are hidden from the Walker inventory grid
+
+# Apps on the exclude list are left out of the inventory grid when it first
+# opens, and appear only once you type a search. Nothing is uninstalled and no
+# .desktop file is touched -- this only changes what the grid shows at rest.
+#
+# Two files are read and unioned: a baseline committed to the omarchy repo, and
+# a personal list in ~/.config. Only the personal one is ever written to, so a
+# `git pull` can add baseline exclusions without clobbering your choices.
+
+set -uo pipefail
+
+OMARCHY_PATH=${OMARCHY_PATH:-$HOME/.local/share/omarchy}
+REPO_LIST="$OMARCHY_PATH/default/walker/app-exclude.txt"
+USER_LIST="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/walker-app-exclude.txt"
+MANIFEST="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/walker-app-entries.tsv"
+
+# Strip comments and blank lines; that is the on-disk format for both files.
+entries_of() {
+  [[ -f $1 ]] || return 0
+  sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v '^$'
+}
+
+usage() {
+  cat <<'USAGE'
+Usage: omarchy-walker-app-exclude <command> [name...]
+
+  list              show the current exclude list
+  add <name>...     hide apps from the grid until searched for
+  remove <name>...  show apps in the grid again
+  apps              list every app name the inventory knows about
+  edit              open the personal exclude list in $EDITOR
+
+Names are matched case-insensitively against the app's display name, and also
+against its .desktop id, so either works:
+
+  omarchy-walker-app-exclude add "Avahi SSH Server Browser"
+  omarchy-walker-app-exclude add bssh
+USAGE
+}
+
+cmd=${1:-}
+[[ $# -gt 0 ]] && shift
+
+case "$cmd" in
+list)
+  # Show where each entry came from; only the personal ones are removable.
+  entries_of "$REPO_LIST" | sed 's/$/\t(repo baseline)/'
+  entries_of "$USER_LIST"
+  ;;
+
+apps)
+  # The manifest is name-sorted already, so this comes out alphabetical.
+  [[ -s $MANIFEST ]] || omarchy-walker-app-entries --sync
+  cut -f2 "$MANIFEST" 2>/dev/null
+  ;;
+
+edit)
+  mkdir -p "$(dirname "$USER_LIST")"
+  [[ -f $USER_LIST ]] || printf '# One app name per line. Lines starting with # are ignored.\n' >"$USER_LIST"
+  exec "${EDITOR:-nvim}" "$USER_LIST"
+  ;;
+
+add)
+  [[ $# -gt 0 ]] || { usage; exit 1; }
+  mkdir -p "$(dirname "$USER_LIST")"
+  [[ -f $USER_LIST ]] || printf '# One app name per line. Lines starting with # are ignored.\n' >"$USER_LIST"
+  for name in "$@"; do
+    if entries_of "$USER_LIST" | grep -qixF "$name"; then
+      echo "already excluded: $name"
+    else
+      printf '%s\n' "$name" >>"$USER_LIST"
+      echo "excluded: $name"
+    fi
+  done
+  ;;
+
+remove)
+  [[ $# -gt 0 ]] || { usage; exit 1; }
+  [[ -f $USER_LIST ]] || { echo "nothing to remove; $USER_LIST does not exist" >&2; exit 1; }
+  for name in "$@"; do
+    if entries_of "$USER_LIST" | grep -qixF "$name"; then
+      # Match the whole line so a name that is a substring of another survives.
+      grep -vixF "$name" "$USER_LIST" >"$USER_LIST.tmp" && mv -f "$USER_LIST.tmp" "$USER_LIST"
+      echo "restored: $name"
+    elif entries_of "$REPO_LIST" | grep -qixF "$name"; then
+      echo "'$name' comes from the repo baseline ($REPO_LIST); edit that file to change it" >&2
+    else
+      echo "not excluded: $name" >&2
+    fi
+  done
+  ;;
+
+""|-h|--help|help) usage ;;
+*) usage; exit 1 ;;
+esac
