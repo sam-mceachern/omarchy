@@ -107,8 +107,7 @@ child:selected .item-box * { color: @selected-text; }
 .keybind-hints { background: transparent; padding: 4px; margin-top: 6px; font-size: 11px; }
 .placeholder   { padding: 20px; }
 
-/* ---- Detail panel: shows the selected app's icon, name and description ---- */
-.preview {
+.preview-clip {
   border: 15px solid transparent;
   border-image-source: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input.png");
   border-image-slice: 15 15 15 15;
@@ -117,7 +116,11 @@ child:selected .item-box * { color: @selected-text; }
   background-image: url("../../../../../../../.config/omarchy/current/theme/walker-sprites/input-center.png");
   background-repeat: repeat;
   margin-bottom: 8px;
-  padding: 2px;
+}
+
+.preview {
+  background: transparent;
+  border: none;
 }
 
 .preview-box, .preview-stack { background: transparent; }
@@ -131,7 +134,7 @@ child:selected .item-box * { color: @selected-text; }
 
 /* ---- Open button (walker renders each action as a GtkButton) ---- */
 .keybinds {
-  margin: 0px 10px 8px 0px;
+  margin: 0px 40px 40px 0px;
 }
 .item-keybinds, .global-keybinds { background: transparent; }
 

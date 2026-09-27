@@ -69,11 +69,14 @@
                      max-content-height and no visible scrollbars. -->
                 <child>
                   <object class="GtkScrolledWindow" id="PreviewClip">
+                    <style>
+                      <class name="preview-clip"></class>
+                    </style>
                     <property name="hexpand">true</property>
                     <property name="vexpand">false</property>
                     <property name="valign">start</property>
-                    <property name="max-content-height">140</property>
-                    <property name="min-content-height">140</property>
+                    <property name="max-content-height">150</property>
+                    <property name="min-content-height">150</property>
                     <property name="propagate-natural-height">false</property>
                     <property name="vscrollbar-policy">external</property>
                     <property name="hscrollbar-policy">external</property>
